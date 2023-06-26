@@ -1,0 +1,235 @@
+---
+title: "STAT462: Data Mining Assignment1"
+author: "Thi Minh Nguyet Tran - 87540111"
+output:
+  pdf_document: default
+  html_document: default
+---
+**Question 1**: 
+
+**(a) Sketch the dataset**
+
+```{r}
+#A given dataset
+x <- c(3, 6, 12)
+y <- c(2, 1, 6)
+#Plot the dataset
+plot(x, y, pch=16, col = "blue")
+```
+
+\newpage
+**(a) Compute beta_hat1 and beta_hat0**
+
+![Caption for the picture.](D:/NGUYET/UC/01.Study/S1/02. STAT462_23S1/Exam/Assignment1/1b.png)
+
+**(c) Sketch the graph of the fitted linear model jointly with the data set (continuing the figure from part (a))**
+
+```{r}
+data_exam <- data.frame(x, y)
+plot(data_exam$x, data_exam$y, pch=16, col = "blue", xlab = "x", ylab = "y")
+abline(lm(y ~ x, data = data_exam), col = "red")
+```
+
+**(d) Compute training MSE and testing MSE**
+
+![Caption for the picture.](D:/NGUYET/UC/01.Study/S1/02. STAT462_23S1/Exam/Assignment1/1d.png)
+
+**Explain:** I will pick model f0(x). this is because the training MSE measures how well a model fits the training data, while the testing MSE measures how well the model make predictions on new data. In this case, testing MSE of f1(x) is higher than that of f0(x), indicating that model f1(x) is not able to generalize well to new data. The model with the lower MSE_test is better. Therefore, f0(x) generalizes better performance than f1(x).
+
+```{r, echo=FALSE}
+MSE_table <- data.frame(
+  Model = c("f0(x)", "f1(x)"),
+  MSE_train = c(4.667, 1.167),
+  MSE_test = c(1, 2.25)
+)
+MSE_table
+```
+
+
+\newpage
+
+**Question 2**: Fit kNN regression models to the Auto data set to predict Y = horsepower using X = weight. This data has been divided into training and testing sets: AutoTrain.csv and AutoTest.csv
+
+```{r loading_library, include=FALSE}
+#Load libraby
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+```
+
+
+```{r input_data}
+# Input data sources
+auto_test <- read.csv("AutoTest.csv")
+auto_train <- read.csv("AutoTrain.csv")
+head(auto_train, 5)
+head(auto_test, 5)
+```
+
+We have X = weight is predictor and Y = horsepower is response 
+```{r extract_dataset}
+#Training predictor values
+x_train <- auto_train$weight
+#Training response values
+y_train <- auto_train$horsepower
+#Testing predictor values
+x_test <- auto_test$weight
+#Testing response values
+y_test <- auto_test$horsepower
+#Value of k
+k_values <- c(2, 5, 10, 20, 30, 50, 100)
+```
+
+Create Function to predict response values
+```{r funtion_kNN}
+kNN <- function(k,x.train,y.train,x.pred) {
+  n.pred <- length(x.pred);		y.pred <- numeric(n.pred)
+  for (i in 1:n.pred){
+    d <- abs(x.train - x.pred[i])
+    dstar = d[order(d)[k]]
+    y.pred[i] <- mean(y.train[d <= dstar])		
+  }
+  # Return the vector of predictions
+  invisible(y.pred)
+}
+```
+
+**(a) Perform kNN regression with k = 2, 5, 10, 20, 30, 50 and 100, (learning from the training data) and compute the training and testing MSE for each value of k.**
+
+Compute training MSE
+```{r compute MSE_train}
+mse_tr <- c()
+for (k in k_values) {
+  y_pred_tr = kNN(k, x_train, y_train, x_train)
+  regr_mse_tr = mean((y_pred_tr - y_train)^2)
+  mse_tr <- c(mse_tr, regr_mse_tr)
+  cmd <- sprintf("with k = %s, the Training MSE is %f ", k, regr_mse_tr)
+  print(cmd)
+}
+```
+
+Compute testing MSE
+```{r compute MSE_test}
+mse_te <- c()
+for (k in k_values) {
+  y_pred_te = kNN(k, x_train, y_train, x_test)
+  regr_mse_te = mean((y_pred_te - y_test)^2)
+  mse_te <- c(mse_te, regr_mse_te)
+  cmd <- sprintf("with k = %s, the Testing MSE is %f ", k, regr_mse_te)
+  print(cmd)
+}
+```
+
+**(b) Which value of k performed best? Explain**
+
+Summary of result for training and testing MSE
+```{r MSE_table}
+#Create a MSE result table
+df_MSE <- data.frame(
+  k_value = k_values,
+  MSE_train = mse_tr,
+  MSE_test = mse_te
+)
+df_MSE
+```
+
+Plot MSE results
+```{r, fig.width = 12}
+#Plot Training MSE
+p1 <- ggplot(data = df_MSE,
+             mapping = aes(x = k_value, y = MSE_train))+
+  geom_line(color = "blue")+
+  geom_point(color = "blue")+
+  scale_x_continuous(breaks = c(2, 5, 10, 20, 30, 50, 100))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  ggtitle("Training MSE")
+
+#Plot Training MSE
+p2 <- ggplot(data = df_MSE,
+             mapping = aes(x = k_value, y = MSE_test))+
+  geom_line(color = "red")+
+  geom_point(color = "red")+
+  scale_x_continuous(breaks = c(2, 5, 10, 20, 30, 50, 100))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"))+
+  ggtitle("Testing MSE")
+
+grid.arrange(p1, p2, nrow = 1)
+```
+
+**Explain:** with k = 20, the model achieves the lowest MSE and generalizes the best performance. In this case, we see that the MSE values of testing dataset decrease when k increase upto a certain point (k = 20) and then start to increase again for larger values of k. Therefore, the optimal value of k for this data set would be around 20
+
+**(c) Plot the training data, testing data and the best kNN model in the same figure. **
+
+with k = 2, Training MSE is lowest, while with k = 20, Testing MSE is lowest
+```{r dataframe}
+#Create data frame of predictions with k = 2 for training dataset
+predictions_tr2 <- data.frame(
+  weight_train = x_train,
+  horsepower_train = y_train,
+  horsepower_pred = kNN(2, x_train, y_train, x_train)
+)
+head(predictions_tr2, 5)
+
+#Create data frame of predictions with k = 20 for testing dataset
+predictions_te20 <- data.frame(
+  weight_test = x_test,
+  horsepower_test = y_test,
+  horsepower_pred = kNN(20, x_train, y_train, x_test)
+)
+head(predictions_te20, 5)
+```
+
+```{r kNN plotting, fig.width = 12}
+#plot training data set
+train_plot <- ggplot(data= predictions_tr2)+
+  geom_point(
+    mapping = aes(x = weight_train, y = horsepower_train),
+    size = 2 , color = "blue")+
+  geom_line(
+    mapping = aes(x = weight_train, y = horsepower_pred),
+    linewidth = 1, color = "red")+
+  labs(
+    title = "KNN Regression fit with training data set (k = 2)",
+    x = "Weight", y = "Horsepower")+
+  theme(text = element_text(size=10))
+
+#plot testing data set
+test_plot <- ggplot(data= predictions_te20)+
+  geom_point(
+    mapping = aes(x = weight_test, y = horsepower_test),
+    size = 2 , color = "darkgreen")+
+  geom_line(
+    mapping = aes(x = weight_test, y = horsepower_pred),
+    linewidth = 1, color = "red")+
+  labs(
+    title = "KNN Regression fit with testing data set (k = 20)",
+    x = "Weight", y = "Horsepower")+
+  theme(text = element_text(size=10))
+
+grid.arrange(train_plot, test_plot, nrow = 1)
+```
+
+**(d) Describe the bias-variance trade-off for kNN regression. **
+
+```{r plot_MSE, fig.width=8}
+ggplot(data = df_MSE)+
+  geom_line(mapping = aes(x = k_value, y = MSE_train, color = "Training"))+
+  geom_point(mapping = aes(x = k_value, y = MSE_train, color = "Training"))+
+  geom_line(mapping = aes(x = k_value, y = MSE_test, color = "Testing"))+
+  geom_point(mapping = aes(x = k_value, y = MSE_test, color = "Testing"))+
+  scale_x_continuous(breaks = c(2, 5, 10, 20, 30, 50, 100))+
+  scale_color_manual(values = c("red", "blue"), name = "MSE Type", labels = c("Testing", "Training"))+
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"),
+        legend.position = "right")+
+  ggtitle("Training MSE vs Testing MSE")
+```
+
+
+* The bias-variance trade-off refers to the relationship between the model's ability to fit the training data (bias) and its ability to make predictions on new unseen data (variance)
+    + we can see that when k=2 the training MSE is lowest, this is because the model is more flexible and can capture more complex patterns in the data,but it also results in overfitting to the tranining data. that is the reason why when we apply k=2 for testing data (unseen data) the MSE increase too much, indicating that the model cannot generalize well to new data. As a result, low values of k lead to high variance and low bias.
+    + In contrast, when we apply higher values of k, the testing MSE values decrease (low variance) but training MSE is increase (high bias), this is because the model is less flexible and can capture simpler patterns in data. This model may results in underfitting, means the model does not predict the training data very well.
+
+
